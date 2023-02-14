@@ -29,6 +29,6 @@ export const formatNotFoundError = (textError: string) => {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Credentials': true,
     },
-    body: textError
+    body: JSON.stringify({ message: textError })
   }
 }
