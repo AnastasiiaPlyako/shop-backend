@@ -1,25 +1,42 @@
+import * as AWS from 'aws-sdk';
+
 import type { ValidatedEventAPIGatewayProxyEvent } from '@libs/api-gateway';
-import {formatJSONResponse, formatNotFoundError} from '@libs/api-gateway';
+import { formatInternalError, formatJSONResponse, formatNotFoundError, TResponseProduct } from '@libs/api-gateway';
 import { middyfy } from '@libs/lambda';
-import { products } from '@mock/index';
+import { createFullProducts } from '@functions/utils';
 
 import schema from './schema';
 
+const dynamo = new AWS.DynamoDB.DocumentClient();
+
 const getProductsById: ValidatedEventAPIGatewayProxyEvent<typeof schema> = async (event) => {
-  try {
-    if (event.pathParameters && event.pathParameters.productId) {
-      const { productId } = event.pathParameters;
-      const findProducts = products.filter((el) => el.id === productId);
+    try {
+        console.log(event);
+        if (event.pathParameters && event.pathParameters.productId) {
+            const {productId} = event.pathParameters;
 
-      if (!findProducts.length) {
-        return formatNotFoundError('This product not found')
-      }
+            const queryResultProduct = await dynamo.query({
+                TableName: process.env.TABLE_NAME,
+                KeyConditionExpression: 'id = :id',
+                ExpressionAttributeValues: {':id': productId}
+            }).promise();
 
-      return formatJSONResponse(findProducts);
+            const queryResultStock = await dynamo.query({
+                TableName: process.env.TABLE_NAME_QUANTITY,
+                KeyConditionExpression: 'product_id = :product_id',
+                ExpressionAttributeValues: {':product_id': productId}
+            }).promise();
+
+            if (!queryResultProduct.Items.length) {
+                return formatNotFoundError('This product not found')
+            }
+
+            const fullInfoProducts = createFullProducts(queryResultProduct.Items, queryResultStock.Items);
+            return formatJSONResponse(fullInfoProducts as TResponseProduct[]);
+        }
+    } catch (e) {
+        return formatInternalError();
     }
-  } catch (e) {
-    return formatNotFoundError('Something went wrong')
-  }
 };
 
 export const main = middyfy(getProductsById);
