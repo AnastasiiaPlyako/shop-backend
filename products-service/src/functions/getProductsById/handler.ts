@@ -1,9 +1,10 @@
 import * as AWS from 'aws-sdk';
 
 import type { ValidatedEventAPIGatewayProxyEvent } from '@libs/api-gateway';
-import { formatInternalError, formatJSONResponse, formatNotFoundError, TResponseProduct } from '@libs/api-gateway';
+import { TResponseProduct, formatJSONResponse } from '@libs/api-gateway';
 import { middyfy } from '@libs/lambda';
 import { createFullProducts } from '@functions/utils';
+import { formatInternalError, formatNotFoundError } from '@error/index';
 
 import schema from './schema';
 

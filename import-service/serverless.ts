@@ -1,33 +1,37 @@
-import type { AWS } from '@serverless/typescript';
+import type {AWS} from '@serverless/typescript';
 
-import getProductsList from '@functions/getProductsList';
-import getProductsById from '@functions/getProductsById';
-import createProduct from '@functions/createProduct';
+import importProductsFile from '@functions/importProductsFile';
+import importFileParser from '@functions/importFileParser';
 
 const serverlessConfiguration: AWS = {
-    service: 'products-service',
-    useDotenv: true,
+    service: 'import-service',
     frameworkVersion: '3',
-    plugins: ['serverless-auto-swagger', 'serverless-esbuild'],
+    useDotenv: true,
+    plugins: ['serverless-esbuild'],
     provider: {
         name: 'aws',
         runtime: 'nodejs14.x',
         region: 'eu-west-1',
         stage: 'dev',
         profile: 'anastasia',
+        iamRoleStatements: [{
+            Action: ['s3:ListBucket', 's3:GetObject', 's3:PutObject',  's3:PutObjectAcl', 's3:DeleteObject', 's3:*',],
+            Effect: 'Allow',
+            Resource: ['arn:aws:s3:::node-aws-s3-plyako', 'arn:aws:s3:::node-aws-s3-plyako/*'],
+        },
+        ],
         apiGateway: {
             minimumCompressionSize: 1024,
             shouldStartNameWithService: true,
         },
         environment: {
+            BUCKET: '${env:BUCKET}',
             AWS_NODEJS_CONNECTION_REUSE_ENABLED: '1',
             NODE_OPTIONS: '--enable-source-maps --stack-trace-limit=1000',
-            TABLE_NAME: '${env:TABLE_NAME}',
-            TABLE_NAME_QUANTITY: '${env:TABLE_NAME_QUANTITY}'
         },
     },
-    functions: { getProductsList, getProductsById, createProduct },
-    package: { individually: true },
+    functions: { importProductsFile, importFileParser },
+    package: {individually: true},
     custom: {
         esbuild: {
             bundle: true,
