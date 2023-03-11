@@ -2,12 +2,8 @@ import * as AWS from 'aws-sdk';
 
 import { createFullProducts } from '@functions/utils';
 import { middyfy } from '@libs/lambda';
-import {
-    formatInternalError,
-    formatJSONResponse,
-    ValidatedEventAPIGatewayProxyEvent
-} from '@libs/api-gateway';
-
+import { ValidatedEventAPIGatewayProxyEvent, formatJSONResponse } from '@libs/api-gateway';
+import { formatInternalError } from '@error/index';
 import schema from './schema';
 
 const getProductsList: ValidatedEventAPIGatewayProxyEvent<typeof schema> = async (event) => {
