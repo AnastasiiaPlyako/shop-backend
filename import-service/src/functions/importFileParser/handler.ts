@@ -1,16 +1,17 @@
 import * as AWS from 'aws-sdk';
 
-import type { ValidatedEventAPIGatewayProxyEvent } from '@libs/api-gateway';
-import { formatJSONResponse } from '@libs/api-gateway';
-import { middyfy } from '@libs/lambda';
-import { formatInternalError } from '@error/index';
+import type {ValidatedEventAPIGatewayProxyEvent} from '@libs/api-gateway';
+import {formatJSONResponse} from '@libs/api-gateway';
+import {middyfy} from '@libs/lambda';
+import {formatInternalError} from '@error/index';
 
 import schema from './schema';
-import { parseCsvStreamData } from './utils/index';
+import { sendMessageSQS } from './utils/index';
+import csv from "csv-parser";
 
-const importProductsFile: ValidatedEventAPIGatewayProxyEvent<typeof schema> = async (event) => {
+const importFileParser: ValidatedEventAPIGatewayProxyEvent<typeof schema> = async (event) => {
     try {
-        const s3 = new AWS.S3({ region: process.env.REGION });
+        const s3 = new AWS.S3({region: process.env.REGION});
         const bucketName = process.env.BUCKET;
         for (const record of event.Records) {
             const key = decodeURIComponent(record.s3.object.key.replace(/\+/g, ' '));
@@ -19,7 +20,14 @@ const importProductsFile: ValidatedEventAPIGatewayProxyEvent<typeof schema> = as
                 Key: key
             }
             const s3Stream = s3.getObject(params).createReadStream();
-            parseCsvStreamData(s3Stream);
+            await s3Stream
+                .pipe(csv())
+                .on('data', async (data) => {
+                    await sendMessageSQS(data);
+                })
+                .on('error', (e) => {
+                    console.log(e);
+                })
             await s3.copyObject({
                 Bucket: bucketName,
                 CopySource: bucketName + '/' + record.s3.object.key,
@@ -36,4 +44,4 @@ const importProductsFile: ValidatedEventAPIGatewayProxyEvent<typeof schema> = as
     }
 };
 
-export const main = middyfy(importProductsFile);
+export const main = middyfy(importFileParser);
