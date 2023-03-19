@@ -1,12 +1,15 @@
-import csv from 'csv-parser';
+import { SendMessageCommand, SQSClient } from '@aws-sdk/client-sqs';
+import { formatInternalError } from '@error/index';
 
-export const parseCsvStreamData = (stream) => {
-    stream
-        .pipe(csv())
-        .on('data', (data) => {
-            console.log(data);
+export const sendMessageSQS = async (products) => {
+    try {
+        const sqs = new SQSClient({ region: "eu-west-1" });
+        const command = new SendMessageCommand({
+            QueueUrl: process.env.SQS_URL,
+            MessageBody: JSON.stringify(products),
         })
-        .on('error', (e) => {
-            console.log('error', e);
-        })
+        await sqs.send(command);
+    } catch (e) {
+        return formatInternalError();
+    }
 }
